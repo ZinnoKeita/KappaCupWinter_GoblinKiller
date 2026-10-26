@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Player.h"
+#include "Target.h"
 
 namespace {
 	//Playerの動き
@@ -9,12 +10,20 @@ namespace {
 	const float GRAVITY = 980.0f;//重力
 	const float PITCH_LIMIT = 80.0f;//上下に向ける最大角度
 
-	////射撃に関して
-	//const float FIRE_INTERVAL = 0.15f;//射撃間隔（秒）
-	//const float FIRE_RANGE = 5000.0f;//射程
-	//const int FIRE_DAMAGE = 25;//1発のダメージ
-	//const float RAY_OFFSET = 30.0f;//自分の当たり判定を避けるため、レイを少し前から始める
+	//射撃に関して
+	const float FIRE_INTERVAL = 0.15f;//射撃間隔（秒）
+	const float FIRE_RANGE = 5000.0f;//射程
+	const int FIRE_DAMAGE = 25;//1発のダメージ
+	const float RAY_OFFSET = 30.0f;//自分の当たり判定を避けるため、レイを少し前から始める
 }
+
+//struct WeaponData {
+//	const wchar_t* name; //表示名
+//	float fireInterval;//連射間隔
+//	int damage;//１発のダメージ
+//	int pellets;//１回に出る段数（ショットガン用）
+//	float spread;//弾のばらつき
+//};
 
 bool Player::Start() {
 	//Player
@@ -28,14 +37,14 @@ bool Player::Start() {
 	g_camera3D->SetFar(10000.0f);
 
 
-	////Gun
-	//m_crosshair.Init("Assets/sprite/maruten.dds", 64.0f, 64.0f);
-	//m_crosshair.SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-	//m_crosshair.Update();
+	//Gun
+	m_crosshair.Init("Assets/sprite/maruten.dds", 64.0f, 64.0f);
+	m_crosshair.SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+	m_crosshair.Update();
 
-	//m_hitText.SetText(L"HIT");
-	//m_hitText.SetPosition(40.0f, -30.0f, 0.0f);
-	//m_hitText.SetColor(1.0f, 0.2f, 0.2f, 1.0f);
+	m_hitText.SetText(L"HIT");
+	m_hitText.SetPosition(40.0f, -30.0f, 0.0f);
+	m_hitText.SetColor(1.0f, 0.2f, 0.2f, 1.0f);
 
 
 	return true;
@@ -47,16 +56,16 @@ void Player::Update() {
 	Move();
 	UpdateCamera();
 
-	////Gun
-	//float dt = g_gameTime->GetFrameDeltaTime();
-	//m_fireTimer -= dt;
-	//m_hitTimer -= dt;
+	//Gun
+	float dt = g_gameTime->GetFrameDeltaTime();
+	m_fireTimer -= dt;
+	m_hitTimer -= dt;
 
-	////右トリガーを押している間、一定間隔で撃つ
-	//if (g_pad[0]->IsPress(enButtonRB2) && m_fireTimer <= 0.0f) {
-	//	Fire();
-	//	m_fireTimer = FIRE_INTERVAL;
-	//}
+	//右トリガーを押している間、一定間隔で撃つ
+	if (g_pad[0]->IsPress(enButtonRB2) && m_fireTimer <= 0.0f) {
+		Fire();
+		m_fireTimer = FIRE_INTERVAL;
+	}
 
 }
 
@@ -106,9 +115,49 @@ void Player::UpdateCamera() {
 	m_lookDir.z = cosf(m_pitch) * cosf(m_yaw);
 
 	//目の位置にカメラを置いて、向いている方向を見る
-	Vector3 eyePos = m_position;
-	eyePos.y += EYE_HEIGHT;
+	m_eyePos = m_position;
+	m_eyePos.y += EYE_HEIGHT;
 
-	g_camera3D->SetPosition(eyePos);
-	g_camera3D->SetTarget(eyePos + m_lookDir);
+	g_camera3D->SetPosition(m_eyePos);
+	g_camera3D->SetTarget(m_eyePos + m_lookDir);
+}
+
+void Player::Fire() {
+	//１．壁・床までの距離を調べる
+	float wallDist = FIRE_RANGE;
+	Vector3 rayStart = m_eyePos + m_lookDir * RAY_OFFSET;
+	Vector3 rayEnd = m_eyePos + m_lookDir * FIRE_RANGE;
+	Vector3 hitPos;
+	if (PhysicsWorld::GetInstance()->RayTest(rayStart, rayEnd, hitPos)) {
+		wallDist = (hitPos - m_eyePos).Length();
+	}
+
+	//２．的の中で、一番近くて、壁より手前の物を探す
+	Target* nearest = nullptr;
+	float nearestDist = wallDist;
+
+	QueryGOs<Target>("target", [&](Target* target) {
+		if (target == nullptr || target->IsDead()) {
+			return true;//次へ
+		}
+		float dist = 0.0f;
+		if (target->IntersectRay(m_eyePos, m_lookDir, dist) && dist < nearestDist) {
+			nearestDist = dist;
+			nearest = target;
+		}
+		return true;
+		});
+
+	//３．当たったらダメージ
+	if (nearest != nullptr) {
+		nearest->TakeDamage(FIRE_DAMAGE);
+		m_hitTimer = 0.2f;
+	}
+}
+
+void Player::Render(RenderContext& rc) {
+	m_crosshair.Draw(rc);
+	if (m_hitTimer > 0.0f) {
+		m_hitText.Draw(rc);
+	}
 }

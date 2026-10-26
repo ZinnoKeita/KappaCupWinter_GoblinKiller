@@ -11,14 +11,14 @@ public:
 	const Vector3& GetPosition() const { return m_position; }
 	const Vector3& GetLoosDirection() const { return m_lookDir; }
 
-	//void Render(RenderContext& rc)override;
+	void Render(RenderContext& rc)override;
 
 private:
 	void Look();
 	void Move();
 	void UpdateCamera();
 
-	//void Fire();//射撃
+	void Fire();//射撃
 
 private:
 	CharacterController m_charaCon;//キャラコン
@@ -28,10 +28,10 @@ private:
 	float m_yaw = 0.0f;//左右の角度
 	float m_pitch = 0.0f;//上下の角度
 
-	//SpriteRender m_crosshair;//標準
-	//FontRender m_hitText;//命中表示
-	//Vector3 m_eyePos = Vector3::Zero;//目の位置
-	//float m_fireTimer = 0.0f;//次に打てるまでの時間
-	//float m_hitTimer = 0.0f;//命中表示の残り時間
+	SpriteRender m_crosshair;//標準
+	FontRender m_hitText;//命中表示
+	Vector3 m_eyePos = Vector3::Zero;//目の位置
+	float m_fireTimer = 0.0f;//次に打てるまでの時間
+	float m_hitTimer = 0.0f;//命中表示の残り時間
 };
 
