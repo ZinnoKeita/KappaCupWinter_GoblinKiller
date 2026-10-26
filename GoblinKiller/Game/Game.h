@@ -8,13 +8,18 @@ class Game : public IGameObject
 {
 public:
 	Game() {}
-	~Game() {}
-	bool Start();
-	void Update();
+	~Game();
+
+	bool Start()override;
+	void Update()override;
+
 	void Render(RenderContext& rc);
 
+
 private:
-	ModelRender m_modelRender;
-	Vector3 m_pos;
+	Player* m_player = nullptr;
+
+	ModelRender m_stageRender;
+	PhysicsStaticObject m_stagePhysics;
 };
 

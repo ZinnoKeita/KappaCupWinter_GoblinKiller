@@ -1,0 +1,15 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "x64\\Debug\\k2EnginePreCompile.obj",
+            "outputs": [
+                "x64\\Debug\\k2EnginePreCompile.cpp.obj.dt.module.json",
+                "x64\\Debug\\k2EnginePreCompile.cpp.obj.dt.d.json",
+                "x64\\Debug\\k2Engine.pch"
+            ],
+            "requires": []
+        }
+    ]
+}

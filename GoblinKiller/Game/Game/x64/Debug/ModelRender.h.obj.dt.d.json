@@ -1,0 +1,15 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\k2engine\\graphics\\modelrender.h",
+        "ProvidedModule": "",
+        "Includes": [
+            "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\k2engine\\graphics\\myrenderer.h",
+            "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\k2enginelow\\geometry\\aabb.h",
+            "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\k2engine\\geometry\\geometrydata.h",
+            "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\k2enginelow\\graphics\\computeanimationvertexbuffer.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}
