@@ -17,7 +17,7 @@ public:
 private:
 	ModelRender m_modelRender;
 	Vector3 m_position = Vector3::Zero;
-	int m_hp = 100;
+	int m_hp = 1000;
 	float m_radius = 50.0f;
 	float m_centerHeight = 80.0f;
 };

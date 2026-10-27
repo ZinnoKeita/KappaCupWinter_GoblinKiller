@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Player.h"
 #include "Target.h"
+#include "Bullet.h"
 
 namespace {
 	//Playerの動き
@@ -15,15 +16,72 @@ namespace {
 	const float FIRE_RANGE = 5000.0f;//射程
 	const int FIRE_DAMAGE = 25;//1発のダメージ
 	const float RAY_OFFSET = 30.0f;//自分の当たり判定を避けるため、レイを少し前から始める
+
+	struct WeaponData {
+		const wchar_t* name; //表示名
+		float fireInterval;//連射間隔
+		int damage;//１発のダメージ
+		int pellets;//１回に出る段数（ショットガン用）
+		float spread;//弾のばらつき
+	};
+
+	const int WEAPON_NUM = 3;
+	const WeaponData WEAPONS[WEAPON_NUM] = {
+		{L"RIFLE",0.10f,10,1,0.01f},
+		{L"SHOTGUN",0.80f,8,8,0.08f},
+		{L"SNIPER",1.50f,100,1,0.00f},
+	};
+
+	//-1.0~1.0のランダムな値
+	float RandomSigned() {
+		return(static_cast<float>(rand()) / RAND_MAX) * 2.0f - 1.0f;
+	}
+
+
+	//視点操作の調整
+	const float LOOK_DEADZONE = 0.15f;//これ以下の倒し具合は無視する
+	const float LOOK_CURVE = 2.0f;//大きいほど、少し倒したときの動きが遅くなる
+
+	//右スティックの倒し具合を0.0~1.0のなめらかな値で取得する
+	//パッドがつながっていない時はfalseを返す
+	bool GetAnalogRStick(float& outX, float& outY) {
+		XINPUT_STATE state;
+		ZeroMemory(&state, sizeof(state));
+		if (XInputGetState(0, & state) != ERROR_SUCCESS) {
+			return false;//未接続
+		}
+
+		//-32768~32767を-1.0~1.0に治す
+		float x = state.Gamepad.sThumbRX / 32767.0f;
+		float y = state.Gamepad.sThumbRY / 32767.0f;
+		if (x > 1.0f) { x = 1.0f; }
+		if (x < -1.0f) { x = -1.0f; }
+		if (y > 1.0f) { y = 1.0f; }
+		if (y < -1.0f) { y = -1.0f; }
+
+		//倒した長さ
+		float length = sqrtf(x * x + y * y);
+		if (length < LOOK_DEADZONE) {
+			outX = 0.0f;
+			outY = 0.0f;
+			return true;//デッドゾーン内
+		}
+
+		//デッドゾーンを引いて、0.0~1.0に伸ばし直す
+		float rate = (length - LOOK_DEADZONE) / (1.0f - LOOK_DEADZONE);
+		if (rate > 1.0f) { rate = 1.0f; }
+
+		//カーブをかける（2乗すると、小さい入力ほど、より小さく）
+		rate = powf(rate, LOOK_CURVE);
+
+		//向きは変えず、長さだけrateにする
+		outX = x / length * rate;
+		outY = y / length * rate;
+		return true;
+	}
 }
 
-//struct WeaponData {
-//	const wchar_t* name; //表示名
-//	float fireInterval;//連射間隔
-//	int damage;//１発のダメージ
-//	int pellets;//１回に出る段数（ショットガン用）
-//	float spread;//弾のばらつき
-//};
+
 
 bool Player::Start() {
 	//Player
@@ -47,6 +105,9 @@ bool Player::Start() {
 	m_hitText.SetColor(1.0f, 0.2f, 0.2f, 1.0f);
 
 
+	m_weaponText.SetText(WEAPONS[m_weaponNo].name);
+	m_weaponText.SetPosition(300.0f, -300.0f, 0.0f);
+
 	return true;
 }
 
@@ -56,15 +117,20 @@ void Player::Update() {
 	Move();
 	UpdateCamera();
 
+	ChangeWeapon();
+
 	//Gun
 	float dt = g_gameTime->GetFrameDeltaTime();
 	m_fireTimer -= dt;
 	m_hitTimer -= dt;
 
+	
+
 	//右トリガーを押している間、一定間隔で撃つ
 	if (g_pad[0]->IsPress(enButtonRB2) && m_fireTimer <= 0.0f) {
 		Fire();
-		m_fireTimer = FIRE_INTERVAL;
+		m_fireTimer = WEAPONS[m_weaponNo].fireInterval;
+		//m_fireTimer = FIRE_INTERVAL;
 	}
 
 }
@@ -72,8 +138,20 @@ void Player::Update() {
 void Player::Look() {
 	float dt = g_gameTime->GetFrameDeltaTime();
 
-	m_yaw += g_pad[0]->GetRStickXF() * LOOK_SPEED * dt;
-	m_pitch += g_pad[0]->GetRStickYF() * LOOK_SPEED * dt;
+	float stickX = 0.0f;
+	float stickY = 0.0f;
+	if (!GetAnalogRStick(stickX, stickY)) {
+		//パッドがない時は、今まで道理エンジンの値を使う
+		stickX = g_pad[0]->GetRStickXF();
+		stickY = g_pad[0]->GetRStickYF();
+	}
+
+	m_yaw += stickX * LOOK_SPEED * dt;
+	m_pitch += stickY * LOOK_SPEED * dt;
+
+
+	//m_yaw += g_pad[0]->GetRStickXF() * LOOK_SPEED * dt;
+	//m_pitch += g_pad[0]->GetRStickYF() * LOOK_SPEED * dt;
 
 	//真上・ましたを向いてひっくり返らないように制限
 	const float limit = Math::DegToRad(PITCH_LIMIT);
@@ -123,10 +201,29 @@ void Player::UpdateCamera() {
 }
 
 void Player::Fire() {
+
+	const WeaponData& weapon = WEAPONS[m_weaponNo];
+
+	//視線に垂直な「右」と「上」の方向（ばらつき用）
+	Vector3 right(cosf(m_yaw), 0.0f, -sinf(m_yaw));
+	Vector3 up(-sinf(m_pitch) * sinf(m_yaw), cosf(m_pitch), -sinf(m_pitch) * cosf(m_yaw));
+
+	//弾の数だけレイを撃つ
+	for (int i = 0;i < weapon.pellets;i++) {
+		Vector3 dir = m_lookDir
+			+ right * (RandomSigned() * weapon.spread)
+			+ up * (RandomSigned() * weapon.spread);
+		dir.Normalize();
+		FireRay(dir);
+	}
+
+}
+
+void Player::FireRay(const Vector3& dir) {
 	//１．壁・床までの距離を調べる
 	float wallDist = FIRE_RANGE;
-	Vector3 rayStart = m_eyePos + m_lookDir * RAY_OFFSET;
-	Vector3 rayEnd = m_eyePos + m_lookDir * FIRE_RANGE;
+	Vector3 rayStart = m_eyePos + dir * RAY_OFFSET;
+	Vector3 rayEnd = m_eyePos + dir * FIRE_RANGE;
 	Vector3 hitPos;
 	if (PhysicsWorld::GetInstance()->RayTest(rayStart, rayEnd, hitPos)) {
 		wallDist = (hitPos - m_eyePos).Length();
@@ -141,7 +238,7 @@ void Player::Fire() {
 			return true;//次へ
 		}
 		float dist = 0.0f;
-		if (target->IntersectRay(m_eyePos, m_lookDir, dist) && dist < nearestDist) {
+		if (target->IntersectRay(m_eyePos, dir, dist) && dist < nearestDist) {
 			nearestDist = dist;
 			nearest = target;
 		}
@@ -150,13 +247,42 @@ void Player::Fire() {
 
 	//３．当たったらダメージ
 	if (nearest != nullptr) {
-		nearest->TakeDamage(FIRE_DAMAGE);
+		//nearest->TakeDamage(FIRE_DAMAGE);
+
+		nearest->TakeDamage(WEAPONS[m_weaponNo].damage);
 		m_hitTimer = 0.2f;
+	}
+
+	//４．見た目の玉を飛ばす
+	Vector3 end = m_eyePos + dir * nearestDist;
+
+	//重工の位置：目から少し右・下・前にずらす
+	Vector3 right(cosf(m_yaw), 0.0f, -sinf(m_yaw));
+	Vector3 muzzle = m_eyePos + right * 15.0f + Vector3(0.0f, -12.0f, 0.0f) + m_lookDir * 40.0f;
+
+	Bullet* bullet = NewGO<Bullet>(0, "bullet");
+	bullet->Setup(muzzle, end);
+}
+
+void Player::ChangeWeapon() {
+	int old = m_weaponNo;
+
+	if (g_pad[0]->IsTrigger(enButtonRB1)) {
+		m_weaponNo = (m_weaponNo + 1) % WEAPON_NUM;
+	}
+	if (g_pad[0]->IsTrigger(enButtonLB1)) {
+		m_weaponNo = (m_weaponNo + WEAPON_NUM - 1) % WEAPON_NUM;
+	}
+
+	if (m_weaponNo != old) {
+		m_weaponText.SetText(WEAPONS[m_weaponNo].name);
 	}
 }
 
+
 void Player::Render(RenderContext& rc) {
 	m_crosshair.Draw(rc);
+	m_weaponText.Draw(rc);
 	if (m_hitTimer > 0.0f) {
 		m_hitText.Draw(rc);
 	}

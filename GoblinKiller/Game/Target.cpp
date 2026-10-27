@@ -9,6 +9,7 @@ bool Target::Start() {
 }
 
 void Target::Update() {
+	
 	m_modelRender.Update();
 }
 

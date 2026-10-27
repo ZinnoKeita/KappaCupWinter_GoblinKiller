@@ -20,6 +20,9 @@ private:
 
 	void Fire();//射撃
 
+	void ChangeWeapon();//武器の切り替え
+	void FireRay(const Vector3& dir);//１本のレイを撃つ
+
 private:
 	CharacterController m_charaCon;//キャラコン
 	Vector3 m_position = Vector3::Zero;//足元の位置
@@ -33,5 +36,8 @@ private:
 	Vector3 m_eyePos = Vector3::Zero;//目の位置
 	float m_fireTimer = 0.0f;//次に打てるまでの時間
 	float m_hitTimer = 0.0f;//命中表示の残り時間
+
+	int m_weaponNo = 0;//今持っている武器の番号
+	FontRender m_weaponText;//武器名の表示
 };
 
