@@ -22,13 +22,15 @@ namespace {
 		int damage;//１発のダメージ
 		int pellets;//１回に出る段数（ショットガン用）
 		float spread;//弾のばらつき
+		int magazine;//マガジンの大きさ
+		float reloadTime;//リロード時間（秒）
 	};
 
 	const int WEAPON_NUM = 3;
 	const WeaponData WEAPONS[WEAPON_NUM] = {
-		{L"RIFLE",0.10f,10,1,0.01f},
-		{L"SHOTGUN",0.80f,8,8,0.08f},
-		{L"SNIPER",1.50f,100,1,0.00f},
+		{L"RIFLE",0.10f,10,1,0.01f,30,1.5f},
+		{L"SHOTGUN",0.80f,8,8,0.08f,6,2.5f},
+		{L"SNIPER",1.50f,100,1,0.00f,5,2.0f},
 	};
 
 	//-1.0~1.0のランダムな値
@@ -109,6 +111,14 @@ bool Player::Start() {
 
 	m_bulletManager.Init();
 
+	//すべての武器をマガジン満タンで始める
+	for (int i = 0;i < WEAPON_NUM;i++) {
+		m_ammo[i] = WEAPONS[i].magazine;
+	}
+
+	m_ammoText.SetPosition(300.0f, -340.0f, 0.0f);//武器名の下
+	UpdateAmmoText();
+
 	return true;
 }
 
@@ -119,6 +129,7 @@ void Player::Update() {
 	UpdateCamera();
 
 	ChangeWeapon();
+	UpdateReload();
 
 	//Gun
 	float dt = g_gameTime->GetFrameDeltaTime();
@@ -128,11 +139,26 @@ void Player::Update() {
 	
 
 	//右トリガーを押している間、一定間隔で撃つ
-	if (g_pad[0]->IsPress(enButtonRB2) && m_fireTimer <= 0.0f) {
-		Fire();
-		m_fireTimer = WEAPONS[m_weaponNo].fireInterval;
+	if (g_pad[0]->IsPress(enButtonRB2) && m_fireTimer <= 0.0f && !m_isReloading) {
+		if (m_ammo[m_weaponNo] > 0) {
+			Fire();
+			m_ammo[m_weaponNo]--;//１発消費
+			m_fireTimer = WEAPONS[m_weaponNo].fireInterval;
+			UpdateAmmoText();
+
+			if (m_ammo[m_weaponNo] == 0) {
+				StartReload();
+			}
+		}
+		else {
+			StartReload();
+		}
+		
+		/*Fire();
+		m_fireTimer = WEAPONS[m_weaponNo].fireInterval;*/
 		//m_fireTimer = FIRE_INTERVAL;
 	}
+
 
 	m_bulletManager.Update();
 
@@ -282,8 +308,52 @@ void Player::ChangeWeapon() {
 
 	if (m_weaponNo != old) {
 		m_weaponText.SetText(WEAPONS[m_weaponNo].name);
+		m_isReloading = false;
+		UpdateAmmoText();
 	}
 }
+
+void Player::StartReload() {
+	if (m_isReloading) {
+		return;//すでにリロード中
+	}
+	if (m_ammo[m_weaponNo] >= WEAPONS[m_weaponNo].magazine) {
+		return;//マガジンが満タンなら不要
+	}
+	m_isReloading = true;
+	m_reloadTimer = WEAPONS[m_weaponNo].reloadTime;
+	UpdateAmmoText();
+}
+
+void Player::UpdateReload() {
+	if (!m_isReloading) {
+		//手動リロード（Xbutton）
+		if (g_pad[0]->IsTrigger(enButtonX)) {
+			StartReload();
+		}
+		return;
+	}
+
+	//リロード中：時間がたったらマガジンを満タンに知る
+	m_reloadTimer -= g_gameTime->GetFrameDeltaTime();
+	if (m_reloadTimer <= 0.0) {
+		m_ammo[m_weaponNo] = WEAPONS[m_weaponNo].magazine;//予備弾は無限
+		m_isReloading = false;
+		UpdateAmmoText();
+	}
+}
+
+void Player::UpdateAmmoText() {
+	wchar_t text[64];
+	if (m_isReloading) {
+		swprintf_s(text, L"RELOADING...");
+	}
+	else {
+		swprintf_s(text, L"%d/%d", m_ammo[m_weaponNo], WEAPONS[m_weaponNo].magazine);
+	}
+	m_ammoText.SetText(text);
+}
+
 
 
 void Player::Render(RenderContext& rc) {
@@ -293,4 +363,5 @@ void Player::Render(RenderContext& rc) {
 		m_hitText.Draw(rc);
 	}
 	m_bulletManager.Render(rc);
+	m_ammoText.Draw(rc);
 }

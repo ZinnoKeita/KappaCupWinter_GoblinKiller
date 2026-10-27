@@ -24,6 +24,10 @@ private:
 	void ChangeWeapon();//武器の切り替え
 	void FireRay(const Vector3& dir);//１本のレイを撃つ
 
+	void UpdateReload();
+	void StartReload();
+	void UpdateAmmoText();
+
 private:
 	CharacterController m_charaCon;//キャラコン
 	Vector3 m_position = Vector3::Zero;//足元の位置
@@ -41,6 +45,11 @@ private:
 	int m_weaponNo = 0;//今持っている武器の番号
 	FontRender m_weaponText;//武器名の表示
 
-	BulletManager m_bulletManager;
+	BulletManager m_bulletManager;//オブジェクトプール用
+
+	int m_ammo[3] = { 0,0,0 };//武器ごとの残弾（武器の数と同じ３つ）
+	bool m_isReloading = false;//リロード中かの判定
+	float m_reloadTimer = 0.0f;//リロードの残り時間
+	FontRender m_ammoText;//弾数の表示
 };
 
