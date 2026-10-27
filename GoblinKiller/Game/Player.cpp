@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "Player.h"
 #include "Target.h"
-#include "Bullet.h"
 
 namespace {
 	//Playerの動き
@@ -108,6 +107,8 @@ bool Player::Start() {
 	m_weaponText.SetText(WEAPONS[m_weaponNo].name);
 	m_weaponText.SetPosition(300.0f, -300.0f, 0.0f);
 
+	m_bulletManager.Init();
+
 	return true;
 }
 
@@ -132,6 +133,8 @@ void Player::Update() {
 		m_fireTimer = WEAPONS[m_weaponNo].fireInterval;
 		//m_fireTimer = FIRE_INTERVAL;
 	}
+
+	m_bulletManager.Update();
 
 }
 
@@ -254,14 +257,17 @@ void Player::FireRay(const Vector3& dir) {
 	}
 
 	//４．見た目の玉を飛ばす
-	Vector3 end = m_eyePos + dir * nearestDist;
+	//Vector3 end = m_eyePos + dir * nearestDist;
 
 	//重工の位置：目から少し右・下・前にずらす
+	/*Vector3 right(cosf(m_yaw), 0.0f, -sinf(m_yaw));
+	Vector3 muzzle = m_eyePos + right * 15.0f + Vector3(0.0f, -12.0f, 0.0f) + m_lookDir * 40.0f;*/
+
+	Vector3 end = m_eyePos + dir * nearestDist;
 	Vector3 right(cosf(m_yaw), 0.0f, -sinf(m_yaw));
 	Vector3 muzzle = m_eyePos + right * 15.0f + Vector3(0.0f, -12.0f, 0.0f) + m_lookDir * 40.0f;
 
-	Bullet* bullet = NewGO<Bullet>(0, "bullet");
-	bullet->Setup(muzzle, end);
+	m_bulletManager.Spawn(muzzle, end);
 }
 
 void Player::ChangeWeapon() {
@@ -286,4 +292,5 @@ void Player::Render(RenderContext& rc) {
 	if (m_hitTimer > 0.0f) {
 		m_hitText.Draw(rc);
 	}
+	m_bulletManager.Render(rc);
 }

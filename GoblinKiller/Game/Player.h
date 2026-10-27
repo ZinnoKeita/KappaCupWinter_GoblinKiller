@@ -1,4 +1,5 @@
 #pragma once
+#include "BulletManager.h"
 class Player : public IGameObject
 {
 public:
@@ -39,5 +40,7 @@ private:
 
 	int m_weaponNo = 0;//今持っている武器の番号
 	FontRender m_weaponText;//武器名の表示
+
+	BulletManager m_bulletManager;
 };
 

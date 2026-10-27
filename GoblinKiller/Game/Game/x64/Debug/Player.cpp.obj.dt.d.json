@@ -676,8 +676,8 @@
             "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\k2engine\\graphics\\light\\volumelightbase.h",
             "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\k2engine\\graphics\\light\\volumepointlight.h",
             "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\game\\player.h",
-            "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\game\\target.h",
-            "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\game\\bullet.h"
+            "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\game\\bulletmanager.h",
+            "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\game\\target.h"
         ],
         "ImportedModules": [],
         "ImportedHeaderUnits": []

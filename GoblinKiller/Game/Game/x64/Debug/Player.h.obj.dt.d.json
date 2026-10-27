@@ -3,7 +3,9 @@
     "Data": {
         "Source": "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\game\\player.h",
         "ProvidedModule": "",
-        "Includes": [],
+        "Includes": [
+            "c:\\my\\01_project\\02_game\\kappacupwinter_goblinkiller\\goblinkiller\\game\\bulletmanager.h"
+        ],
         "ImportedModules": [],
         "ImportedHeaderUnits": []
     }
